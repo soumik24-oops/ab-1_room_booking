@@ -1,0 +1,13 @@
+{
+  "name": "ab1-room-booking",
+  "version": "2.0.0",
+  "private": true,
+  "description": "AB-1 six-room booking prototype with private GitHub authorization source",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
