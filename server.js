@@ -195,6 +195,7 @@ async function sendOtpEmail(email, otp) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = body?.message || body?.name || `HTTP ${response.status}`;
+    console.error(`[OTP] Resend rejected request: HTTP ${response.status}; detail=${detail}`);
     throw new Error(`Resend email failed: ${detail}`);
   }
 
@@ -220,14 +221,17 @@ function canRequestOtp(req, email) {
 
 app.post("/api/access/request-code", async (req, res) => {
   const email = normalizeEmail(req.body.email);
+  console.log(`[OTP] request received; test_mode=${TEST_MODE}; email_domain=${email.includes("@") ? email.split("@").pop() : "invalid"}`);
 
   if (!TEST_MODE && !validInstitutionalEmail(email)) {
+    console.log("[OTP] rejected: non-institutional email while TEST_MODE is false");
     return res.status(403).json({
       ok: false,
       message: "Use an @iiserb.ac.in institutional email address."
     });
   }
-  if (TEST_MODE && !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+  if (TEST_MODE && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    console.log("[OTP] rejected: invalid email syntax");
     return res.status(400).json({
       ok: false,
       message: "Enter a valid email address."
@@ -236,6 +240,7 @@ app.post("/api/access/request-code", async (req, res) => {
 
   try {
     const user = await findAuthorizedUser(email);
+    console.log(`[OTP] authorization lookup result: ${user ? "AUTHORIZED" : "NOT_AUTHORIZED"}`);
     if (!user) {
       return res.status(403).json({
         ok: false,
@@ -262,7 +267,9 @@ app.post("/api/access/request-code", async (req, res) => {
     const otp = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
     const salt = crypto.randomBytes(16).toString("hex");
 
+    console.log("[OTP] calling Resend API");
     await sendOtpEmail(email, otp);
+    console.log("[OTP] Resend API accepted the email request");
 
     otpChallenges.set(email, {
       user,
@@ -274,9 +281,9 @@ app.post("/api/access/request-code", async (req, res) => {
       attempts: 0
     });
 
-    return res.json({ ok: true, message: "A verification code has been sent to your IISER email." });
+    return res.json({ ok: true, message: "A verification code has been sent to your email." });
   } catch (error) {
-    console.error("OTP request failed:", error);
+    console.error("[OTP] request failed:", error.message);
     return res.status(503).json({
       ok: false,
       message: "We could not send the verification code. Please try again."

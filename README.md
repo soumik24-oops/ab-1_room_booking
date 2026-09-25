@@ -44,3 +44,15 @@ For this test, the entered email must also be present with `status=active` in on
 **Do not use TEST_MODE in production.** Set `TEST_MODE=false` before real deployment; production then requires `@iiserb.ac.in`.
 
 The default sender remains `onboarding@resend.dev` for Resend testing. Resend restricts that test sender to the email address associated with your Resend account, so use your Resend account email for this test.
+
+
+## Temporary diagnostic logging
+
+The debug build logs only the OTP flow stage and the recipient's email domain. It does not log the email address, OTP, GitHub token, or Resend API key.
+
+Look for:
+- `[OTP] request received`
+- `[OTP] authorization lookup result`
+- `[OTP] calling Resend API`
+- `[OTP] Resend API accepted the email request`
+- `[OTP] Resend rejected request`
