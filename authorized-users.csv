@@ -1,0 +1,5 @@
+email,roll_number,department,role,status
+physics.student@iiserb.ac.in,2024PHY001,Physics,Student,active
+maths.student@iiserb.ac.in,2024MAT001,Mathematics,Student,active
+physics.faculty@iiserb.ac.in,,Physics,Faculty,active
+maths.faculty@iiserb.ac.in,,Mathematics,Faculty,active
