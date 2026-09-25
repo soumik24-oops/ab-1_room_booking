@@ -1,8 +1,8 @@
 {
   "name": "ab1-room-booking",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "description": "AB-1 six-room booking prototype with private GitHub authorization source",
+  "description": "AB-1 six-room booking app with GitHub authorization and email OTP verification",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"

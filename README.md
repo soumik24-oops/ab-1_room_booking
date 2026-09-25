@@ -1,45 +1,46 @@
-# AB-1 Room Booking System — v2 architecture
+# AB-1 Room Booking — Email OTP version
 
-Six AB-1 rooms:
-- Classrooms: 108, 308
-- Discussion rooms: 211, 311
-- Conference rooms: 216, 316
+This version keeps the existing GitHub authorization architecture and adds email ownership verification.
 
-## Authorization architecture
+## Render environment variables
 
-The booking server reads two **private GitHub repositories**:
-- `ab1-authorized-mathematics`
-- `ab1-authorized-physics`
+Existing:
+- GITHUB_OWNER=soumik24-oops
+- GITHUB_TOKEN=<secret>
+- MATH_REPO=ab1-authorized-mathematics
+- PHYSICS_REPO=ab1-authorized-Physics
+- PORT=3000
 
-Each repository contains four files:
-- `Faculties.csv`
-- `PhD.csv`
-- `BS-MS.csv`
-- `Postdocs.csv`
+New:
+- RESEND_API_KEY=<secret>
+- RESEND_FROM_EMAIL=<sender on a Resend-verified domain>
 
-Only an active `@iiserb.ac.in` email found in one of those files is authorized.
+For temporary Resend testing, the default sender is `onboarding@resend.dev`, but Resend restricts that test sender to the email address associated with the Resend account. For real IISER users, verify a domain in Resend and set `RESEND_FROM_EMAIL` to an address on that verified domain.
 
-### Important GitHub permission model
+## OTP behavior
 
-GitHub does not provide different collaborator permissions for different folders inside one repository. Therefore, if Mathematics and Physics offices need different write access, they must be **two separate private repositories**. They can live under one GitHub Organization, for example `ab1-authorized-users`.
+- 6-digit server-generated code
+- 10-minute expiry
+- one-time use
+- maximum 5 verification attempts
+- 60-second resend cooldown
+- maximum 5 code requests per IP/email per 15 minutes
+- OTP stored only as a hash
+- authenticated session stored in an HttpOnly cookie
 
-## Current prototype
+The current room-booking data model remains the browser localStorage prototype; this OTP change does not convert bookings into a shared database.
 
-This version provides the backend authorization lookup and retains the six-room browser prototype. It is **not yet production authentication**: the backend currently creates a development session after the authorization-list lookup.
 
-For production, replace that development step with IISER-approved SSO/CAS/Google Workspace authentication. The server must verify the authenticated identity before issuing a session.
+## Personal-email testing
 
-## Setup
+For development testing, set:
 
-1. Create the two private authorization repositories.
-2. Put the four CSV files in each repository.
-3. Create a GitHub token/app credential with read-only Contents access to those two repositories.
-4. Copy `.env.example` to `.env` and fill in the values.
-5. Install dependencies:
-   `npm install`
-6. Start:
-   `npm start`
-7. Open:
-   `http://localhost:3000`
+- `TEST_MODE=true`
 
-Never put `GITHUB_TOKEN` in `index.html`, `app.js`, or any client-side code.
+In TEST_MODE, the authorization CSV may contain your personal email address and the application allows a normal email address instead of requiring `@iiserb.ac.in`. The OTP is sent directly to the email address entered on the login screen.
+
+For this test, the entered email must also be present with `status=active` in one of the private Mathematics/Physics CSV files.
+
+**Do not use TEST_MODE in production.** Set `TEST_MODE=false` before real deployment; production then requires `@iiserb.ac.in`.
+
+The default sender remains `onboarding@resend.dev` for Resend testing. Resend restricts that test sender to the email address associated with your Resend account, so use your Resend account email for this test.

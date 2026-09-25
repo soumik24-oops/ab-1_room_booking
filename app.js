@@ -1,30 +1,104 @@
-const AUTH_KEY = 'ab1AuthenticatedUser';
-const SESSION_KEY = 'ab1SessionId';
 const authGate = document.querySelector('#authGate');
 const authForm = document.querySelector('#authForm');
 const authEmail = document.querySelector('#authEmail');
 const authError = document.querySelector('#authError');
+const authButton = authForm.querySelector('button');
 const userEmail = document.querySelector('#userEmail');
 const logout = document.querySelector('#logout');
 
+let pendingEmail = '';
+
 function normalizeEmail(email){ return String(email || '').trim().toLowerCase(); }
 
-async function authorize(email){
+function setAuthMessage(message, isError = true){
+  authError.textContent = message;
+  authError.style.color = isError ? '' : '#18845b';
+}
+
+function renderOtpStep(){
+  authForm.innerHTML = `
+    <label>Verification code
+      <input id="authCode" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" pattern="\\d{6}" placeholder="6-digit code" required>
+    </label>
+    <p class="auth-email-hint">Code sent to <strong>${escapeHtml(pendingEmail)}</strong></p>
+    <p class="error" id="authError"></p>
+    <button class="primary full" type="submit">Verify email</button>
+    <button class="secondary full" id="resendCode" type="button">Resend code</button>
+    <button class="text-button full" id="changeEmail" type="button">Use a different email</button>
+  `;
+
+  const codeInput = document.querySelector('#authCode');
+  codeInput.focus();
+
+  authForm.onsubmit = async e => {
+    e.preventDefault();
+    const code = codeInput.value.trim();
+    const error = document.querySelector('#authError');
+    const button = authForm.querySelector('button[type="submit"]');
+
+    if(!/^\d{6}$/.test(code)){
+      error.textContent = 'Enter the 6-digit verification code.';
+      return;
+    }
+
+    button.disabled = true;
+    error.textContent = 'Verifying…';
+
+    try {
+      const res = await fetch('/api/access/verify-code', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:pendingEmail, code})
+      });
+      const data = await res.json();
+
+      if(!res.ok || !data.ok){
+        error.textContent = data.message || 'Verification failed.';
+        button.disabled = false;
+        return;
+      }
+
+      showPortal(data.user);
+    } catch(err) {
+      error.textContent = 'Could not reach the verification server. Please try again.';
+      button.disabled = false;
+    }
+  };
+
+  document.querySelector('#resendCode').onclick = () => requestCode(pendingEmail, true);
+  document.querySelector('#changeEmail').onclick = () => showAuth();
+}
+
+async function requestCode(email, isResend = false){
   const normalized = normalizeEmail(email);
   if(!/^[^\s@]+@iiserb\.ac\.in$/i.test(normalized)) {
-    return {ok:false,message:'Access denied. Please use your @iiserb.ac.in institutional email address.'};
+    setAuthMessage('Access denied. Please use your @iiserb.ac.in institutional email address.');
+    return;
   }
+
+  authButton.disabled = true;
+  setAuthMessage('Checking the department authorization lists…');
+
   try {
-    const res = await fetch('/api/access/check', {
+    const res = await fetch('/api/access/request-code', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:normalized})
     });
     const data = await res.json();
-    if(!res.ok || !data.allowed) return {ok:false,message:data.message || 'Access denied.'};
-    return {ok:true,user:data.user,sessionId:data.sessionId};
+
+    if(!res.ok || !data.ok){
+      setAuthMessage(data.message || 'Could not send a verification code.');
+      authButton.disabled = false;
+      return;
+    }
+
+    pendingEmail = normalized;
+    renderOtpStep();
   } catch(err) {
-    return {ok:false,message:'Could not reach the authorization server. Start the booking server and try again.'};
+    setAuthMessage('Could not reach the authorization server. Please try again.');
+    authButton.disabled = false;
   }
 }
 
@@ -32,42 +106,50 @@ function showPortal(user){
   authGate.classList.add('hidden');
   userEmail.textContent = `${user.email} · ${user.department} · ${user.category}`;
 }
+
 function showAuth(message=''){
+  pendingEmail = '';
   authGate.classList.remove('hidden');
-  authEmail.value='';
-  authError.textContent=message;
-  setTimeout(()=>authEmail.focus(),50);
+  authForm.innerHTML = `
+    <label>Institutional email
+      <input id="authEmail" type="email" placeholder="yourname@iiserb.ac.in"
+             autocomplete="email" required>
+    </label>
+    <p class="error" id="authError"></p>
+    <button class="primary full" type="submit">Send verification code</button>
+  `;
+
+  const emailInput = document.querySelector('#authEmail');
+  const error = document.querySelector('#authError');
+  emailInput.focus();
+  error.textContent = message;
+
+  authForm.onsubmit = async e => {
+    e.preventDefault();
+    await requestCode(emailInput.value);
+  };
 }
 
-authForm.onsubmit = async e => {
-  e.preventDefault();
-  authError.textContent='Checking the department authorization lists…';
-  const result=await authorize(authEmail.value);
-  if(!result.ok){authError.textContent=result.message;return;}
-  sessionStorage.setItem(AUTH_KEY,JSON.stringify(result.user));
-  sessionStorage.setItem(SESSION_KEY,result.sessionId);
-  showPortal(result.user);
-};
+function escapeHtml(value){
+  return String(value).replace(/[&<>'"]/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+  }[c]));
+}
 
-logout.onclick = () => {
-  sessionStorage.removeItem(AUTH_KEY);
-  sessionStorage.removeItem(SESSION_KEY);
+logout.onclick = async () => {
+  try { await fetch('/api/logout', {method:'POST'}); } catch(_) {}
   showAuth();
 };
 
 (async()=>{
-  const saved=sessionStorage.getItem(AUTH_KEY);
-  if(saved){
-    try {
-      const user=JSON.parse(saved);
-      const result=await authorize(user.email);
-      if(result.ok){
-        sessionStorage.setItem(AUTH_KEY,JSON.stringify(result.user));
-        sessionStorage.setItem(SESSION_KEY,result.sessionId);
-        showPortal(result.user);
-      } else showAuth(result.message);
-    } catch(_){ showAuth(); }
-  } else showAuth();
+  try {
+    const res = await fetch('/api/session');
+    const data = await res.json();
+    if(res.ok && data.authenticated) showPortal(data.user);
+    else showAuth();
+  } catch(_) {
+    showAuth('Could not reach the booking server.');
+  }
 })();
 
 const $ = s => document.querySelector(s);
@@ -100,8 +182,6 @@ let bookings = JSON.parse(localStorage.getItem('ab1Bookings') || 'null') || [
 function save(){ localStorage.setItem('ab1Bookings', JSON.stringify(bookings)); }
 function room(){ return rooms.find(r=>r.id===selectedRoom); }
 function getDayBookings(){ return bookings.filter(b=>b.room===selectedRoom && b.date===iso(selected)).sort((a,b)=>a.start.localeCompare(b.start)); }
-function escapeHtml(value){ return String(value).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-
 function renderRooms(){
   $('#roomCount').textContent = `${rooms.length} rooms`;
   $('#roomGrid').innerHTML = rooms.map(r=>`<button class="room-tile ${r.id===selectedRoom?'selected':''}" data-room="${r.id}">
@@ -111,7 +191,6 @@ function renderRooms(){
   </button>`).join('');
   $('#roomGrid').querySelectorAll('.room-tile').forEach(el=>el.onclick=()=>{selectedRoom=el.dataset.room;renderRooms();render();});
 }
-
 function render(){
   const r=room();
   datePicker.value=iso(selected);
@@ -134,10 +213,7 @@ function render(){
   }).join('');
 
   $('#timeline').querySelectorAll('.free-slot').forEach(slot=>slot.addEventListener('click',()=>openBooking(slot.dataset.time)));
-  const now=new Date(), current=now.toTimeString().slice(0,5);
-  $('#roomStatus');
 }
-
 function openBooking(startTime){
   const r=room();
   bookingDate.value=iso(selected);
