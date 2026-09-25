@@ -1,8 +1,5 @@
 const authGate = document.querySelector('#authGate');
 const authForm = document.querySelector('#authForm');
-const authEmail = document.querySelector('#authEmail');
-const authError = document.querySelector('#authError');
-const authButton = authForm.querySelector('button');
 const userEmail = document.querySelector('#userEmail');
 const logout = document.querySelector('#logout');
 
@@ -11,8 +8,10 @@ let pendingEmail = '';
 function normalizeEmail(email){ return String(email || '').trim().toLowerCase(); }
 
 function setAuthMessage(message, isError = true){
-  authError.textContent = message;
-  authError.style.color = isError ? '' : '#18845b';
+  const error = document.querySelector('#authError');
+  if(!error) return;
+  error.textContent = message;
+  error.style.color = isError ? '' : '#18845b';
 }
 
 function renderOtpStep(){
@@ -77,8 +76,12 @@ async function requestCode(email, isResend = false){
     return;
   }
 
-  authButton.disabled = true;
-  setAuthMessage('Checking the department authorization lists…');
+  const button = authForm.querySelector('button[type="submit"]');
+  if(button){
+    button.disabled = true;
+    button.textContent = isResend ? 'Resending…' : 'Checking…';
+  }
+  setAuthMessage('Checking the department authorization lists…', false);
 
   try {
     const res = await fetch('/api/access/request-code', {
@@ -86,11 +89,16 @@ async function requestCode(email, isResend = false){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:normalized})
     });
-    const data = await res.json();
+
+    let data = {};
+    try { data = await res.json(); } catch(_) {}
 
     if(!res.ok || !data.ok){
       setAuthMessage(data.message || 'Could not send a verification code.');
-      authButton.disabled = false;
+      if(button){
+        button.disabled = false;
+        button.textContent = isResend ? 'Resend code' : 'Send verification code';
+      }
       return;
     }
 
@@ -98,7 +106,10 @@ async function requestCode(email, isResend = false){
     renderOtpStep();
   } catch(err) {
     setAuthMessage('Could not reach the authorization server. Please try again.');
-    authButton.disabled = false;
+    if(button){
+      button.disabled = false;
+      button.textContent = isResend ? 'Resend code' : 'Send verification code';
+    }
   }
 }
 

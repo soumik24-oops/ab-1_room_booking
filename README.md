@@ -63,3 +63,7 @@ Look for:
 This test build intentionally permits a normal email address in the browser login form. `TEST_MODE=true` on Render also permits a normal email address on the backend. The email must still be present as `active` in one of the private authorization CSV files.
 
 This is TEST MODE only. Do not use this build for production until the login form is restored to require `@iiserb.ac.in`.
+
+
+### OTP test build v4
+The OTP form now queries the current dynamically-rendered button/error elements, so the authorization status is visible immediately after clicking Send verification code. Browser cache is also bypassed with a versioned app.js URL.
