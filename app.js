@@ -72,8 +72,8 @@ function renderOtpStep(){
 
 async function requestCode(email, isResend = false){
   const normalized = normalizeEmail(email);
-  if(!/^[^\s@]+@iiserb\.ac\.in$/i.test(normalized)) {
-    setAuthMessage('Access denied. Please use your @iiserb.ac.in institutional email address.');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    setAuthMessage('Please enter a valid email address.');
     return;
   }
 
@@ -111,8 +111,8 @@ function showAuth(message=''){
   pendingEmail = '';
   authGate.classList.remove('hidden');
   authForm.innerHTML = `
-    <label>Institutional email
-      <input id="authEmail" type="email" placeholder="yourname@iiserb.ac.in"
+    <label>Email address
+      <input id="authEmail" type="email" placeholder="you@example.com"
              autocomplete="email" required>
     </label>
     <p class="error" id="authError"></p>

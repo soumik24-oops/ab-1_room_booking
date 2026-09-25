@@ -12,9 +12,9 @@
       <div class="brand auth-brand"><div class="brand-mark">AB</div><div><strong>AB-1</strong><span>Room Booking</span></div></div>
       <p class="eyebrow">INSTITUTIONAL ACCESS</p>
       <h1>Sign in to book a room</h1>
-      <p class="auth-copy">Enter your IISER Bhopal email. Your account must be listed in the private Physics or Mathematics department authorization repository.</p>
+      <p class="auth-copy">Enter the email address used in the private test authorization list. A verification code will be sent to that address.</p>
       <form id="authForm">
-        <label>Institutional email<input id="authEmail" type="email" placeholder="yourname@iiserb.ac.in" autocomplete="email" required></label>
+        <label>Email address<input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" required></label>
         <p class="error" id="authError"></p>
         <button class="primary full" type="submit">Send verification code</button>
       </form>
@@ -72,6 +72,6 @@
   </div>
 
   <div class="toast hidden" id="toast"></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=otp-test-v3"></script>
 </body>
 </html>

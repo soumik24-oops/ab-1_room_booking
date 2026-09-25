@@ -56,3 +56,10 @@ Look for:
 - `[OTP] calling Resend API`
 - `[OTP] Resend API accepted the email request`
 - `[OTP] Resend rejected request`
+
+
+## Test v3 note
+
+This test build intentionally permits a normal email address in the browser login form. `TEST_MODE=true` on Render also permits a normal email address on the backend. The email must still be present as `active` in one of the private authorization CSV files.
+
+This is TEST MODE only. Do not use this build for production until the login form is restored to require `@iiserb.ac.in`.
