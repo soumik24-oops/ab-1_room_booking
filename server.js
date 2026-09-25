@@ -131,7 +131,7 @@ function parseCsv(text) {
 
 async function findAuthorizedUser(email) {
   const normalized = normalizeEmail(email);
-  if (!validInstitutionalEmail(normalized)) return null;
+  if (!TEST_MODE && !validInstitutionalEmail(normalized)) return null;
 
   const repos = [
     { department: "Mathematics", repo: MATH_REPO },
@@ -221,10 +221,16 @@ function canRequestOtp(req, email) {
 app.post("/api/access/request-code", async (req, res) => {
   const email = normalizeEmail(req.body.email);
 
-  if (!validInstitutionalEmail(email)) {
+  if (!TEST_MODE && !validInstitutionalEmail(email)) {
     return res.status(403).json({
       ok: false,
       message: "Use an @iiserb.ac.in institutional email address."
+    });
+  }
+  if (TEST_MODE && !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+    return res.status(400).json({
+      ok: false,
+      message: "Enter a valid email address."
     });
   }
 
