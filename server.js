@@ -15,6 +15,7 @@ const PHYSICS_REPO = process.env.PHYSICS_REPO || "ab1-authorized-Physics";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+const TEST_MODE = String(process.env.TEST_MODE || "false").toLowerCase() === "true";
 
 const CATEGORIES = ["Faculties", "PhD", "BS-MS", "Postdocs"];
 const sessions = new Map();
@@ -286,7 +287,7 @@ app.post("/api/access/request-code", async (req, res) => {
     console.error("[OTP] request failed:", error.message);
     return res.status(503).json({
       ok: false,
-      message: "We could not send the verification code. Please try again."
+      message: TEST_MODE ? `Test-mode error: ${error.message}` : "We could not send the verification code. Please try again."
     });
   }
 });
@@ -295,7 +296,7 @@ app.post("/api/access/verify-code", async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const otp = String(req.body.code || "").trim();
 
-  if (!validInstitutionalEmail(email) || !/^\d{6}$/.test(otp)) {
+  if ((!TEST_MODE && !validInstitutionalEmail(email)) || !/^\d{6}$/.test(otp)) {
     return res.status(400).json({ ok: false, message: "Enter the 6-digit verification code." });
   }
 
